@@ -13,28 +13,33 @@ app.use(function (req,res,next){
     );
     next();
 })
+const {Client} = require("pg");
+const client = new Client({
+    user:"postgres",
+    password:"7037700!!4nN",
+    database:"postgres",
+    port:5432,
+    host:"db.fnmbkbheapxlvopfeiic.supabase.co",
+    ssl:{rejectUnauthorized:false},
+});
+client.connect(function(res,error){
+    console.log("Connected!!")
+})
 var port=process.env.PORT||2410;
 app.listen(port,()=>console.log(`Node app listening on port ${port}!`));
 
-let mysql=require("mysql");
 
-let connData={
-    host:"localhost",
-    user:"root",
-    password:"",
-    database:"employeesdb",
-};
 
 app.get("/employees",function(req,res){
     let department=req.query.department;
     let designation=req.query.designation;
     let gender=req.query.gender;
-    let connection=mysql.createConnection(connData);
     let sql="SELECT * FROM employees";
-    connection.query(sql,function(err,result){
+    console.log("Inside get");
+    client.query(sql,function(err,result){
         if (err) res.status(404).send(err);
         else {
-            let arr1=result;
+            let arr1=result.rows;
             arr1 = department?arr1.filter(em=>em.department===department):arr1;
             arr1 = designation?arr1.filter(em=>em.designation===designation):arr1;
             arr1 = gender?arr1.filter(em=>em.gender===gender):arr1;
@@ -44,61 +49,69 @@ app.get("/employees",function(req,res){
 });
 app.get("/employee/:id",function(req,res){
     let id = req.params.id;
-    let connection=mysql.createConnection(connData);
-    let sql1="SELECT * FROM employees WHERE empCode=(?)";
-    connection.query(sql1,id,function(err,result1){
-        if (err) res.status(404).send(err);
-        else res.send(result1);
+    console.log("Inside get",id);
+    let sql1="SELECT * FROM employees WHERE empcode=$1";
+    const params=[id];
+    client.query(sql1,params,function(err,result1){
+        if (err) {
+            res.status(404).send(err);}
+        else {
+            res.send(result1.rows);}
     })
+   
 })
 app.get("/employees/department/:deptName",function(req,res){
     let deptName=req.params.deptName;
-    let connection=mysql.createConnection(connData);
-    let sql="SELECT * FROM employees WHERE department=(?)";
-    connection.query(sql,deptName,function(err,result){
+    let sql="SELECT * FROM employees WHERE department=$1";
+    const params=[deptName]
+    client.query(sql,params,function(err,result){
         if (err) res.status(404).send(err);
-        else res.send(result);
+        else res.send(result.rows);
     });
 })
 
 app.get("/employees/designation/:desgName",function(req,res){
     let desgName=req.params.desgName;
-    let connection=mysql.createConnection(connData);
-    let sql="SELECT * FROM employees WHERE designation=(?)";
-    connection.query(sql,desgName,function(err,result){
+    let sql="SELECT * FROM employees WHERE designation=$1";
+    const params=[desgName];
+    client.query(sql,params,function(err,result){
         if (err) res.status(404).send(err);
-        else res.send(result);
+        else res.send(result.rows);
     });
 });
+
 
 app.post("/employees", function (req, res) {
     let body = req.body;
-    let connection = mysql.createConnection(connData);
     let arr = [body.empCode, body.name, body.department, body.designation, body.salary, body.gender];
-    let sql = "INSERT INTO employees (empCode, name, department, designation, salary, gender) VALUES (?, ?, ?, ?, ?, ?)";
-
-    connection.query(sql, arr, function (err, result) {
-        if (err) {
+    let sql = "INSERT INTO employees (empCode, name, department, designation, salary, gender) VALUES ($1,$2, $3, $4, $5, $6)";
+    console.log("inside post");
+    client.query(sql, arr, function (err) {
+      if (err) {
+        console.log(err);
+        res.status(404).send(err);
+      } else {
+        let sql1 = "SELECT * FROM employees WHERE empCode = $1";
+        client.query(sql1, [body.empCode], function (err, result) {
+          if (err) {
             res.status(404).send(err);
-        } else {
-            let sql1 = "SELECT * FROM employees WHERE empCode = ?";
-            connection.query(sql1, body.empCode, function (err, result) {
-                if (err) {
-                    res.status(404).send(err);
-                } else {
-                    res.send(result);
-                }
-            });
-        }
+          } else {
+            res.send(result.rows);
+          }
+        });
+      }
     });
-});
+  });
 
 app.delete("/employees/:id",function(req,res){
     let id = req.params.id;
-    let connection=mysql.createConnection(connData);
-    let sql="DELETE FROM employees WHERE empCode=(?)";
-    connection.query(sql,id,function(err,result){
-        if (err) res.status(404).send(err);
+    let params=[id];
+    console.log("inside Delete")
+    let sql="DELETE FROM employees WHERE empcode=$1";
+    client.query(sql,params,function(err,result){
+        if (err) {
+            console.log(err);
+            res.status(404).send(err);}
         else res.send("Data Delete")
     })
 });
@@ -106,16 +119,21 @@ app.delete("/employees/:id",function(req,res){
 app.put("/employees/:id",function(req,res){
     let id=req.params.id;
     let body=req.body;
-    let connection=mysql.createConnection(connData);
-    let sql="UPDATE employees SET name=?, department=?, designation=?, salary=?, gender=?WHERE empCode=?"
+    let params=[id]
+    console.log("inside Put")
+    let sql="UPDATE employees SET name=$1, department=$2, designation=$3, salary=$4, gender=$5 WHERE empCode=$6"
     let arr=[body.name, body.department, body.designation, body.salary, body.gender,id];
-    connection.query(sql,arr,function(err,result){
-        if (err) res.status(404).send(err);
+    client.query(sql,arr,function(err,result){
+        if (err) {
+            console.log(err);
+            res.status(404).send(err);}
         else {
-            let sql1="SELECT * FROM employees WHERE empCode=(?)";
-            connection.query(sql1,id,function(err,result1){
-                if (err) res.status(404).send(err);
-                else res.send(result1);
+            let sql1="SELECT * FROM employees WHERE empCode=$1";
+            client.query(sql1,params,function(err,result1){
+                if (err) {
+                    console.log(err)
+                    res.status(404).send(err);}
+                else res.send(result1.rows);
             })
         }
     })
