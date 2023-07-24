@@ -83,16 +83,16 @@ app.get("/employees/designation/:desgName",function(req,res){
 
 app.post("/employees", function (req, res) {
     let body = req.body;
-    let arr = [body.empCode, body.name, body.department, body.designation, body.salary, body.gender];
-    let sql = "INSERT INTO employees (empCode, name, department, designation, salary, gender) VALUES ($1,$2, $3, $4, $5, $6)";
+    let arr = [body.empcode, body.name, body.department, body.designation, body.salary, body.gender];
+    let sql = "INSERT INTO employees (empcode, name, department, designation, salary, gender) VALUES ($1,$2, $3, $4, $5, $6)";
     console.log("inside post");
     client.query(sql, arr, function (err) {
       if (err) {
         console.log(err);
         res.status(404).send(err);
       } else {
-        let sql1 = "SELECT * FROM employees WHERE empCode = $1";
-        client.query(sql1, [body.empCode], function (err, result) {
+        let sql1 = "SELECT * FROM employees WHERE empcode = $1";
+        client.query(sql1, [body.empcode], function (err, result) {
           if (err) {
             res.status(404).send(err);
           } else {
